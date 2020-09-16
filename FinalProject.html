@@ -1,0 +1,197 @@
+<!doctype html>
+	<html>
+		<head>
+			<meta charset="utf-8">
+			<meta http-equiv="x-ua-compatible" content="ie=edge">
+			<title> The Tragic Adventure of Cedric Diggory </title>
+			<meta name="description" content="">
+			<meta name="viewport" content="width=device-width, initial-scale=1">
+		</head>
+		
+		<body background="media/maze.jpg">
+			<h1 style="background-color: black; color: #FFFFFF; font-family: 'Courier New', Courier, monospace; text-decoration: underline solid rgb(68, 68, 68); font-variant: small-caps; text-transform: capitalize; text-align: center; font-size: 25px;">The Tragic Adventure of Cedric Diggory</h1>
+			<h2> Project by Emma Poffenberger and Natalie Stephenson </h2>
+			
+			<!--  Game Canvas -->
+			<canvas id="gl-canvas" style="border: 1px solid black; background: url('media/sky3.jpg'); display: block; margin-left: auto; margin-right: auto; width: 80%; height: 10%; padding: 10px;">
+				oops... your browser doesn't support the HTLMs5 canvas element
+			</canvas>
+			
+			<p style=" background-color: gray; margin-left: 40px; margin-right: 40px; padding: 15px; font-size: 19px;">
+				About this Game: <br> 
+				This game is a "dungeon-walker" style maze based upon the climactic maze scene from 
+				Harry Potter and the Goblet of Fire.  You play as Cedric Diggory, walking though 
+				the maze to find the Triwizard Cup! The journey is treacherous, however, so watch where
+				you step - there might be hidden tricks within the maze!
+				<br><br><br>
+			</p>
+			<div style=" background-color: gray; margin-left: 40px; margin-right: 40px; padding: 15px; font-size: 15px;">
+				Controls: <br>
+				<table style=" background-color: gray; margin-left: 40px; margin-right: 40px; padding: 15px;">
+   	 				<tr>
+        				<td style="vertical-align:top">
+            				<b>Move Mode 1:</b>
+            				<ul>
+                				<li>W: Move forward</li>
+                				<li>A: Move to the left</li>
+                				<li>S: Move backwards</li>
+                				<li>D: Move to the right</li>
+            				</ul>
+        				</td>
+        				<td style="vertical-align:top">
+            				<b>Move Mode 2:</b>
+            				<ul>
+                				<li>Arrow Key Up:    Move forward</li>
+                				<li>Arrow Key Left:  Move to the left</li>
+                				<li>Arrow Key Down:  Move backwards</li>
+                				<li>Arrow Key Right: Move to the right</li>
+           					</ul>
+        				</td>
+    					<td style="vertical-align: top">
+    						<b> Camera Controls: </b>
+    						<ul>
+    							<li>
+    								<select id="camera-mode-select">
+										<option value="0">Cedric Mode</option>
+										<option value="1">Editing Mode</option>
+									</select>
+								</li>
+								<li>Space Bar - Reset the game and Play Again!
+    						</ul>
+    				</tr>
+				</table>
+			</div>
+			
+<!-- The shader program -->
+<script id="vertex-shader" type="x-shader/x-vertex">#version 300 es
+    layout(location=0) in vec4 vPosition;
+    layout(location=1) in vec3 vNormal;
+    layout(location=2) in vec2 vTexCoord; 
+    
+    uniform mat4 uModel;  // Object to world
+    uniform mat4 uView;   // World to camera
+    uniform mat4 uProj;   // Projection matrix
+    
+    // Output to the fragment shader
+    out vec3 fNormCam;   // Normal in camera coordinates
+    out vec3 fPosCam;    // Position in camera coordinates
+    out vec2 fTexCoord; 
+    
+    void main() {
+        //assign fTexCoord to vTexCoord
+        fTexCoord = vTexCoord; 
+        mat4 mv = uView * uModel;
+        
+    
+        // Compute position in camera coordinates
+        fPosCam = (mv * vPosition).xyz;
+    
+        // Transform normal into camera coordinates.  Note that this is not correct in all cases.  This
+        // only transforms the normal correctly when mv contains uniform scalings.  The correct
+        // transformation is the inverse transpose of mv.  For now, to keep things simple,
+        // we'll just avoid non-uniform scalings.  
+        // Note: we add 0 as the 4th component of the normal.
+        fNormCam = normalize( (mv * vec4(vNormal,0)).xyz );
+    
+        // Convert position to clip coordinates
+        gl_Position = uProj * mv * vPosition;
+    
+    }
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">#version 300 es
+    precision highp float;
+    
+    out vec4 fragColor;
+    
+    // Material Properties
+    uniform vec3 uEmissive;  // Emitted intensity
+    uniform vec3 uAmbient;   // Ambient 
+    uniform vec3 uDiffuse;   // Diffuse reflectivity (Kd)
+    uniform vec3 uSpecular;  // Specular reflectivity (Ks)
+    uniform float uShine;    // Specular exponent (f)
+    
+    // Light properties
+    //uniform vec3 uLightPos[2];        // Light position (camera coords)
+    uniform vec3 uLightPos;
+	uniform vec3 uLightIntensity;  // Light intensity
+    uniform vec3 uAmbientLight;    // Intensity of ambient light
+    
+    // From the vertex shader, interpolated across the triangle
+    in vec3 fNormCam;   // Normal in camera coordinates
+    in vec3 fPosCam;    // Position in camera coordinates
+    in vec2 fTexCoord; 
+    //texture parameters
+    uniform bool uHasDiffuseTex; //whether or not we're using a texture
+    uniform sampler2D uDiffuseTex; //the diffuse texture
+    
+    void main() {
+		//for( int i = 0; i < 2; i++ ) {
+		// All of this code needs to be done for both light positions...
+	        // Renormalize (interpolation can change length slightly)
+	        vec3 n = normalize(fNormCam);
+    
+	        // Direction towards light (camera coords)
+    	    vec3 lightDir = normalize( (uLightPos - fPosCam).xyz );
+        	// Cosine of the angle between normal and lightDir
+        	float lDotN = max( dot( lightDir, n ), 0.0 );
+
+        
+	        vec3 diffuse = vec3(0,0,0);
+	        if(uHasDiffuseTex){
+	            vec3 texVal=texture(uDiffuseTex, fTexCoord).rgb; 
+ 	            diffuse = texVal * lDotN; 
+	        }else{
+    	        diffuse=uDiffuse * lDotN;
+        
+        	}
+        
+        	vec3 specular = vec3(0,0,0);
+        	if( lDotN > 0.0 ) {
+            	// Direction towards the camera
+            	vec3 vDir = normalize( -fPosCam );
+            	// "Halfway" vector
+            	vec3 h = normalize( lightDir + vDir );
+            	float hDotN = max( dot(h, n), 0.0 );
+            	specular = uSpecular * pow(hDotN, uShine);
+        	}
+        
+        	// Final color 
+        	fragColor = vec4( 
+            	uEmissive + 
+            	uAmbientLight * uAmbient + 
+            	uLightIntensity * (diffuse + specular)
+            	, 1 );
+    	//}
+}
+</script>
+
+<!-- Load Javascript files at the end of the body. -->
+<script type="text/javascript" src="lib/gl-matrix-min.js"></script>
+<script type="text/javascript" src="lib/412-utils.js"></script>
+<script type="text/javascript" src="lib/webgl-utils.js"></script>
+<script type="text/javascript" src="lib/geom/triangle-mesh.js"></script>
+<script type="text/javascript" src="lib/geom/shapes/grid.js"></script>
+<script type="text/javascript" src="lib/geom/shapes/axes.js"></script>
+<script type="text/javascript" src="lib/geom/shapes/cube.js"></script>
+<script type="text/javascript" src="lib/geom/shapes/disk.js"></script>
+<script type="text/javascript" src="lib/geom/shapes/cylinder.js"></script>
+<script type="text/javascript" src="lib/geom/shapes/cone.js"></script>
+<script type="text/javascript" src="lib/geom/shapes/quad.js"></script>
+<script type="text/javascript" src="lib/geom/shapes.js"></script>
+
+<script type="text/javascript" src="lib/geom/shapes/TriwizardCup.js"></script>
+
+<script type="text/javascript" src="lib/camera.js"></script>
+<script type="text/javascript" src="lib/material.js"></script>
+<script type="text/javascript" src="lib/textures.js"></script>
+
+<script type="text/javascript" src="paFinal.js"></script>
+
+
+
+
+
+
+		</body>
+	</html>
