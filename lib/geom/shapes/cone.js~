@@ -1,0 +1,85 @@
+/**
+ * Natalie Stephenson
+ * Generates TriangleMesh vertex data for a cone of a given size,
+ * centered at the origin.
+ * 
+ * @param {Number} radius the radius of the disk base
+ * @param {Number} numTriangles the number of triangles to use to draw it
+ * @param {Number} height the height of the cone
+ */
+var generateConeData = function(radius, numTriangles, height) {
+
+    
+       //var theta = 2pi / numTriangles; 
+       var theta = (2 * Math.PI) / numTriangles; 
+       var vee = 0; 
+    
+        let v = [ ];
+        let idx = [ ];
+        //let n = [ ];
+
+      /*  for(let i =0; i<numTriangles; i++){
+            let angle = theta * i; 
+            let x = ((height - vee)/height) * radius * Math.cos(theta);
+            let y = ((height - vee)/height) * radius * Math.sin(theta);
+            let z = vee;
+            
+            v.push(x, y, z);
+            idx.push(numTriangles, i, (i+1)% numTriangles);
+            let temp = ((height - vee) / Math.pow(height, 2)) * Math.pow(radius, 2);
+            let unnormalized = vec3.fromValues(x, y, temp);
+            vec3.normalize(unnormalized, unnormalized);
+            n.push(unnormalized[0], unnormalized[1], unnormalized[2]);
+            vee = vee + height/numTriangles; 
+
+        }
+        v.push(0,0,0);*/
+        
+       for(let i=0; i<numTriangles; i++){
+            let angle = theta * i; 
+            let x = radius/2 * Math.cos(angle);
+            let y = radius/2* Math.sin(angle);
+            //pull the circle out to height h 
+            let z = height; 
+            v.push(x, y, z);
+            idx.push(numTriangles, i, (i+1)%numTriangles); 
+
+            
+        }
+        v.push(0,0,0); 
+        //93
+    var n = [ //normals: full of 0s for now //
+    ]; //as many 0's as are elements in v
+
+    //normals
+        for(i = 0 ;i<v.length; i=i+9){
+            let p1 = vec3.fromValues(v[i], v[i+1], v[i+2]);
+            let p2 = vec3.fromValues(v[i+3], v[i+4], v[i+5]);
+            let p3 = vec3.fromValues(v[i+6], v[i+7], v[i+8]);
+
+            let sub1 = vec3.subtract(vec3.create(), p2, p1);
+            let sub2 = vec3.subtract(vec3.create(), p3, p1);
+            vec3.cross(sub1, sub1, sub2);
+            vec3.normalize(sub1, sub1);
+            n.push(sub1[0], sub1[1], sub1[2]);
+
+        }
+        n.push(0, 1, 0); //top point of cone
+      //  for(j=0; j<numTriangles; j++){
+            //do things for the central point of the cone here?
+       // }
+
+
+
+
+    
+    for(k=0; k<v.length; k++){
+        n.push(0,0,0,);
+    }
+    
+        return {
+            index: idx,
+            normal: n,
+            position: v,
+        };
+    };
